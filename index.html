@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">   <!-- 검색엔진 노출 방지 -->
+<title>우리 동네 알리미</title>
+<!-- ★ 아래 appkey=MYKEY 를 카카오 개발자 콘솔의 JavaScript 키로 바꿔주세요 (사이트 도메인 등록 필요) -->
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=16ba1d43c17c7d74988096c8367cf327&libraries=services"></script>
+<style>
+:root{
+  --red:#d85e65; --red-l:#e48e93; --green:#5daa57; --green-d:#3f8a3a; --yellow:#ecb73a; --blue:#67b2e2;
+  --ink:#4a3a3d; --line:#f5d7d8;
+  --bg1:#fcf2f3; --bg2:#fdf9ef; --bg3:#f3f9fd;
+  /* 기존 이름 → 새 색 연결 */
+  --rose:var(--red-l); --rose-d:var(--red); --coral:var(--red); --coral-d:var(--green-d);
+  --mint:#d6ead5; --lime:var(--yellow); --sky:var(--blue);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+button,input,textarea{font-family:inherit}   /* 버튼·입력창도 페이지와 같은 글꼴 사용 */
+body{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;color:var(--ink);
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.55), rgba(255,255,255,.2)),   /* 이미지 위의 흰 막: 글씨가 잘 보이게 */
+    url('images/bg.png') center / cover no-repeat,                          /* 배경 이미지 */
+    linear-gradient(160deg, var(--bg1), var(--bg2) 60%, var(--bg3))}        /* 이미지가 없을 때 대신 보이는 색 */
+.app{display:grid;grid-template-columns:minmax(300px,26%) 1fr;height:100vh;height:100dvh;gap:12px;padding:12px}
+#resultBox{display:contents}   /* 컴퓨터 화면에서는 감싸는 상자가 없는 것처럼 동작 */
+
+/* ---------- 왼쪽 패널 ---------- */
+.side{display:flex;flex-direction:column;min-height:0;background:#fff;border:2px solid var(--line);
+  border-radius:22px;padding:14px;box-shadow:0 6px 18px rgba(216,94,101,.12)}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.brand img{width:54px;height:54px;border-radius:50%;object-fit:cover;border:3px solid var(--rose);background:#fff}
+.brand h1{font-size:17px;margin:0;color:var(--rose-d)}
+.brand p{margin:2px 0 0;font-size:12px;opacity:.7}
+.searchbox{display:flex;gap:6px}
+.searchbox input{flex:1;min-width:0;padding:10px 12px;border:2px solid var(--line);border-radius:14px;font-size:14px;outline:none;color:var(--ink)}
+.searchbox input:focus{border-color:var(--rose)}
+.btn{border:0;border-radius:14px;padding:10px 14px;font-weight:700;cursor:pointer;color:#fff;
+  background:linear-gradient(135deg,var(--rose),var(--coral));transition:transform .1s}
+.btn:active{transform:scale(.96)}
+#picked{display:none;margin-top:10px;padding:10px;border-radius:16px;background:linear-gradient(135deg,#faecec,#ecf5eb);
+  border:2px dashed var(--rose);font-size:13px;gap:10px;align-items:center}
+#picked.show{display:flex}
+#picked img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--coral)}
+#picked b{display:block;color:var(--coral-d)}
+#picked small{opacity:.75}
+#pickedPhone{display:block;font-weight:700;color:var(--green-d)}
+#pickedPhone:empty{display:none}
+#results{list-style:none;margin:10px 0 0;padding:0;overflow:auto;flex:1;min-height:80px}
+#results li{padding:10px 12px;border:2px solid var(--line);border-radius:14px;margin-bottom:6px;cursor:pointer;background:#fffdfd;transition:.15s}
+#results li:hover{background:#ecf5eb;border-color:var(--mint)}
+#results .nm{display:block;font-weight:700;font-size:14px}
+#results .ad{display:block;font-size:12px;opacity:.75;margin-top:2px}
+#results .empty{cursor:default;text-align:center;border-style:dashed;background:transparent}
+#results .empty img{width:90px;height:90px;object-fit:cover;border-radius:50%;margin-bottom:6px}
+#pager{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:4px 0}
+#pager button{border:0;border-radius:10px;padding:4px 9px;background:var(--sky);color:var(--ink);cursor:pointer}
+#pager button.cur{background:var(--coral);color:#fff;font-weight:700}
+.layers{border-top:2px dashed var(--line);padding-top:10px;margin-top:6px}
+.layers h2{font-size:13px;margin:0 0 8px;color:var(--rose-d)}
+.layers .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tg{border:2px solid var(--line);background:#fff;color:var(--ink);border-radius:14px;padding:9px 6px;font-size:13px;cursor:pointer;font-weight:600;transition:.15s}
+.tg:hover{background:#fcf2f3}
+.tg.on{color:#fff;border-color:transparent}
+.tg[data-k=dong].on{background:var(--rose-d)} .tg[data-k=complaint].on{background:#ecb73a;color:#4a3a3d}
+.tg[data-k=hub].on{background:#f08aa6} .tg[data-k=office].on{background:#6cc3a0}
+.tg[data-k=bank].on{background:#6fb6dc}
+
+/* ---------- 오른쪽: 지도 + 로드뷰 (동적 레이아웃) ---------- */
+.stage{display:grid;grid-template-rows:1fr 0fr;gap:0;min-height:0;transition:grid-template-rows .35s ease,gap .35s}
+.stage.rv{grid-template-rows:1fr 1fr;gap:10px}
+.pane{position:relative;min-height:0;overflow:hidden;border-radius:22px;border:2px solid var(--line);background:#fff;box-shadow:0 6px 18px rgba(216,94,101,.12)}
+#roadviewPane{border-width:0}
+.stage.rv #roadviewPane{border-width:2px}
+#map,#roadview{width:100%;height:100%}
+.rvbtn{display:flex;align-items:center;gap:6px;border:2px solid var(--line);
+  background:#fff;border-radius:999px;padding:6px 14px 6px 6px;font-weight:700;color:var(--ink);cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+.rvbtn img{width:30px;height:30px;border-radius:50%;object-fit:cover}
+.rvbtn.on{background:linear-gradient(135deg,var(--rose),var(--coral));color:#fff;border-color:transparent}
+.rvclose{position:absolute;top:12px;right:12px;z-index:10;border:0;border-radius:999px;padding:8px 14px;background:#fff;color:var(--rose-d);font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.15)}
+
+/* ---------- 지도 위 풍이 walker ---------- */
+.walker{position:relative;width:130px;height:130px;pointer-events:none}
+.walker .cone{position:absolute;left:50%;top:var(--feet,93px);width:130px;height:130px;border-radius:50%;
+  background:conic-gradient(from calc(var(--fov,90deg) / -2),
+    rgba(216,94,101,.65) 0deg, rgba(216,94,101,.65) var(--fov,90deg), transparent var(--fov,90deg));
+  -webkit-mask:radial-gradient(circle closest-side,#000 15%,transparent 100%);
+  mask:radial-gradient(circle closest-side,#000 15%,transparent 100%);
+  transform:translate(-50%,-50%) rotate(var(--pan,0deg));transition:transform .08s linear}
+.walker img{position:absolute;left:42px;top:42px;width:46px;height:46px;border-radius:50%;object-fit:cover;
+  border:3px solid var(--coral);background:#fff;pointer-events:auto;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.3)}
+.walker img.dir{left:33px;top:33px;width:64px;height:64px;border:0;border-radius:0;background:none;
+  object-fit:contain;box-shadow:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.35))}
+.blabel{font-size:12px;font-weight:700;color:var(--rose-d);text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap;pointer-events:none}
+
+/* ---------- 토스트 ---------- */
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,30px);opacity:0;pointer-events:none;z-index:99;
+  display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--rose);border-radius:999px;padding:6px 18px 6px 6px;
+  font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.18);transition:.25s}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast img{width:40px;height:40px;border-radius:50%;object-fit:cover}
+
+/* ---------- 거점 클릭 시 뜨는 커스텀 오버레이 ---------- */
+.poi-card{position:relative;min-width:190px;max-width:min(270px,70vw);margin-bottom:54px;   /* 54px = 마커 높이만큼 위로 띄움 */
+  padding:14px 34px 12px 16px;background:#fff;border:2px solid var(--rose);border-radius:16px;
+  box-shadow:0 6px 18px rgba(0,0,0,.22)}
+.poi-card::after{content:"";position:absolute;left:50%;bottom:-10px;width:16px;height:16px;background:#fff;
+  border-right:2px solid var(--rose);border-bottom:2px solid var(--rose);transform:translateX(-50%) rotate(45deg)}
+.poi-title{font-size:17px;font-weight:800;line-height:1.35;color:var(--ink)}
+.poi-addr{margin-top:5px;font-size:12.5px;line-height:1.4;color:#999}
+.poi-tel{margin-top:3px;font-size:12.5px;font-weight:700;color:var(--green-d)}
+.poi-close{position:absolute;top:6px;right:8px;width:26px;height:26px;border:0;border-radius:50%;
+  background:none;font-size:15px;color:#b5b5b5;cursor:pointer}
+.poi-close:hover{background:#faecec;color:var(--rose-d)}
+/* ---------- 지도 위 버튼 묶음 ---------- */
+.mapbtns{position:absolute;top:12px;left:12px;z-index:10;display:flex;gap:8px;align-items:stretch}   /* 두 버튼 높이를 같게 */
+.cmpbtn{display:flex;align-items:center;border:2px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font-weight:700;
+  color:var(--ink);cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+.cmpbtn:hover{background:#fdf6e7;border-color:#ecb73a}
+/* 지도 위 버튼 3종(로드뷰·민원 등록·로드뷰 닫기)의 글자 크기는 --btn-fs 한 곳에서 조절 */
+.pane{--btn-fs:14px}
+.rvbtn,.cmpbtn,.rvclose{font-size:var(--btn-fs);line-height:1.2}
+/* ---------- 버튼 마우스 오버 효과 ---------- */
+.rvbtn,.rvclose,.cmpbtn{transition:background .15s,border-color .15s,transform .1s,filter .15s}
+@media (hover:hover){                         /* 마우스가 있는 기기에서만 적용 (터치 기기에서 눌린 채 남는 것 방지) */
+  .rvbtn:not(.on):hover{background:#edf6fc;border-color:#67b2e2}   /* 로드뷰 버튼: 연한 파랑 */
+  .rvbtn.on:hover{filter:brightness(1.07)}                         /* 켜진 상태는 조금 더 밝게 */
+  .rvclose:hover{background:#faecec}                               /* 닫기 버튼: 연한 빨강 */
+}
+.rvbtn:active,.rvclose:active,.cmpbtn:active{transform:scale(.97)}  /* 누르는 순간 살짝 눌리는 느낌 */
+/* ---------- 민원 목록 창 (지도 위 최상단) ---------- */
+.cmp-panel{display:none;position:absolute;z-index:500;top:52px;right:56px;width:300px;max-height:calc(100% - 68px);
+  flex-direction:column;overflow:hidden;border:2px solid #ecb73a;border-radius:16px;
+  background:rgba(255,255,255,.95);backdrop-filter:blur(4px);box-shadow:0 8px 22px rgba(0,0,0,.25)}
+.cmp-panel.show{display:flex}
+.cmp-top{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:rgba(236,183,58,.28)}
+.cmp-top button{border:0;background:none;color:var(--ink);font-weight:700;cursor:pointer}
+.cmp-body{display:flex;flex-direction:column;flex:1;min-height:0}
+.cmp-panel.folded .cmp-body{display:none}
+#cmpList{list-style:none;margin:0;padding:6px 8px 8px;overflow:auto;flex:1}
+#cmpList li{padding:9px 10px;margin-bottom:6px;border:2px solid #f3e3b5;border-radius:12px;background:rgba(255,255,255,.75);cursor:pointer}
+#cmpList li:hover{border-color:#ecb73a}
+#cmpList .cmp-empty{cursor:default;text-align:center;opacity:.7;border-style:dashed}
+.cmp-head{font-size:12px;font-weight:800;color:#9a6f10}
+.cmp-content{margin:4px 0;font-size:14px;font-weight:700;white-space:pre-wrap;word-break:break-word}
+.cmp-meta,.cmp-addr,.cmp-note{font-size:12px;line-height:1.45;color:#8a8a8a;word-break:break-word}
+
+/* ---------- 민원 입력 팝업 ---------- */
+.modal{display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;padding:12px;background:rgba(74,58,61,.45)}
+.modal.show{display:flex}
+.modal-box{width:min(420px,100%);max-height:100%;overflow:auto;padding:18px;background:#fff;border:3px solid #ecb73a;border-radius:20px;box-shadow:0 12px 30px rgba(0,0,0,.3)}
+.modal-box h3{margin:0 0 12px;color:var(--rose-d)}
+.modal-box label{display:block;margin-bottom:10px;font-size:12px;font-weight:700}
+.modal-box input,.modal-box textarea{display:block;width:100%;margin-top:4px;padding:9px 11px;border:2px solid var(--line);
+  border-radius:12px;font:inherit;font-size:14px;color:var(--ink);outline:none}
+.modal-box input:focus,.modal-box textarea:focus{border-color:var(--rose)}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.btn-sub{border:2px solid var(--line);background:#fff;color:var(--ink);border-radius:14px;padding:9px 16px;font-weight:700;cursor:pointer}
+/* ※ 규칙 순서 주의: 우선순위가 같으면 나중에 쓴 규칙이 이기므로, 모바일(@media) 블록은 항상 아래에 둡니다 */
+/* =========================================================
+   모바일 화면 (너비 768px 이하) — 컴퓨터 화면에는 영향 없음
+   위: 로고 + 검색창 + 레이어 버튼 줄 / 아래: 지도(로드뷰 켜면 상하 분할)
+   ========================================================= */
+@media (max-width:768px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr;gap:8px;padding:8px;
+       padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+  .side{position:relative;padding:8px 10px;border-radius:16px;z-index:20}
+  .side,.stage,.layers{min-width:0;max-width:100%}
+  .brand{margin-bottom:6px;gap:8px}
+  .brand img{width:34px;height:34px;border-width:2px}
+  .brand h1{font-size:15px}
+  .brand p{display:none}
+  .searchbox input{font-size:16px;padding:9px 11px}        /* 16px 미만이면 아이폰이 입력 시 화면을 확대함 */
+  .btn{padding:9px 14px}
+
+  /* 검색 결과: 지도 위에 뜨는 목록 */
+  #resultBox{display:block;position:absolute;left:0;right:0;top:100%;margin-top:6px;z-index:40;
+    max-height:50vh;max-height:50dvh;overflow:auto;background:#fff;border:2px solid var(--line);
+    border-radius:16px;box-shadow:0 10px 24px rgba(0,0,0,.2)}
+  #resultBox:has(.intro), #resultBox.hide{display:none}    /* 첫 안내 문구는 숨기고, 장소를 고르면 목록을 닫음 */
+  #results{overflow:visible;flex:none;min-height:0;margin:0;padding:8px}
+  #pager{padding:0 8px 8px}
+
+  /* 선택한 주소 카드: 작게 */
+  #picked{margin-top:6px;padding:6px 8px;font-size:12px}
+  #picked img{width:32px;height:32px}
+  #picked small{display:none}
+
+  /* 레이어 버튼: 검색창 아래 한 줄, 좌우로 밀어서 선택 */
+  .layers{margin:6px 0 0;padding-top:8px}
+  .layers h2{display:none}
+  .layers .grid{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tg{flex:0 0 auto;white-space:nowrap;padding:9px 12px}
+
+  .pane{border-radius:16px}
+  .stage.rv{gap:6px}
+  .pane{--btn-fs:13px}                              /* 지도 위 버튼 글자 크기(모바일) */
+  .rvbtn{padding:4px 12px 4px 4px}
+  .rvbtn img{width:26px;height:26px}
+  .rvclose{top:8px;right:8px;padding:7px 12px}
+  #toast{bottom:calc(24px + env(safe-area-inset-bottom));max-width:calc(100% - 24px);font-size:13px}
+  .mapbtns{top:8px;left:8px;gap:6px}
+  .cmpbtn{padding:7px 12px}
+  .cmp-panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:46%}   /* 모바일은 아래쪽 창 */
+  .modal-box input,.modal-box textarea{font-size:16px}                           /* 아이폰 입력 시 확대 방지 */
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== 왼쪽 열 ===== -->
+  <aside class="side">
+    <div class="brand">
+      <img src="images/pungi_hi.jpg" alt="풍이">
+      <div><h1>풍덕동 행정 지원 시스템</h1><p>원하는 장소를 지도에서 확인해요</p></div>
+    </div>
+
+    <div class="searchbox">
+      <input id="q" type="text" placeholder="지번 · 도로명 · 건물명 (예: 중앙초등길)" autocomplete="off">
+      <button class="btn" id="goSearch">검색</button>
+    </div>
+
+    <div id="picked"><img id="pickedImg" src="images/pungi_serenade.jpg" alt="">
+	  <div>
+	    <b id="pickedName"></b>
+		<span id="pickedAddr"></span>
+		<br>
+		<span id="pickedPhone"></span>
+		<small id="pickedXY"></small>
+	  </div>
+	</div>
+
+    <div id="resultBox">
+    <ul id="results">
+      <li class="empty intro"><img src="images/pungi_singing.jpg" alt=""><span class="nm">주소를 검색해 보세요</span><span class="ad">검색 결과에서 선택하면 지도가 이동해요</span></li>
+    </ul>
+    <div id="pager"></div>
+    </div>
+
+    <div class="layers">
+      <h2>지도 레이어</h2>
+      <div class="grid">
+    <button class="tg" data-k="hub">주변 복지관</button>
+        <button class="tg" data-k="dong">행정구역 경계</button>
+    <button class="tg" data-k="office">주변 관공서</button>
+        <button class="tg" data-k="complaint">민원정보</button>
+        <button class="tg" data-k="bank">주변 은행</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== 오른쪽 열 ===== -->
+  <main class="stage" id="stage">
+    <section class="pane">
+      <div id="map"></div>
+    <div class="mapbtns">
+      <button class="rvbtn" id="rvBtn"><img src="images/pungi_face.png" alt="">로드뷰</button>
+      <button class="cmpbtn" id="cmpBtn">📌 민원 등록</button>
+    </div>
+    <aside class="cmp-panel" id="cmpPanel">
+      <div class="cmp-top">
+        <b>📋 민원 목록 <span id="cmpCount">0</span>건</b>
+      <button type="button" id="cmpFold">접기 ▴</button>
+      </div>
+          <div class="cmp-body">
+            <ul id="cmpList"></ul>
+          </div>
+        </aside>
+    </section>
+    <section class="pane" id="roadviewPane">
+      <div id="roadview"></div>
+      <button class="rvclose" id="rvClose">로드뷰 닫기 ✕</button>
+    </section>
+  </main>
+</div>
+<div class="modal" id="cmpModal">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cmpTitle">
+    <h3 id="cmpTitle">📌 민원 등록</h3>
+    <label>주소 (선택한 위치, 수정 가능)<input id="cmpAddr" type="text"></label>
+    <label>접수자<input id="cmpName" type="text" autocomplete="off"></label>
+    <label>민원인 연락처<input id="cmpPhone" type="tel" placeholder="010-0000-0000" autocomplete="off"></label>
+    <label>민원 내용 *<textarea id="cmpContent" rows="4"></textarea></label>
+    <label>비고(참고 내용)<input id="cmpNote" type="text" autocomplete="off"></label>
+    <div class="modal-btns">
+      <button type="button" class="btn-sub" id="cmpCancel">취소</button>
+      <button type="button" class="btn" id="cmpSave">등록</button>
+    </div>
+  </div>
+</div>
+<div id="toast"><img src="images/pungi_hi.jpg" alt=""><span id="toastMsg"></span></div>
+
+<script>
+/* =========================================================
+   설정 영역 — 여기만 고치면 됩니다
+   ========================================================= */
+const CENTER = [34.941855, 127.497301];          // 기본 중심(풍덕동 행정복지센터 가정 — 실제 좌표로 수정)
+const DONG_URL = 'data/suncheon_dong.geojson';   // 순천시만 추출한 행정동 경계
+const HIGHLIGHT_DONG = '풍덕동';
+const SEARCH_RADIUS = 5000;                    // 주소 검색 반경(m, 지도 중심 기준). 0이면 전국
+const WALKER_DIRS = Array.from({length:16}, (_, i) => `images/turnaroundview/w${i}.png`);
+const WALKER_CLOCKWISE = true;   // w0 → w15 가 시계 방향 순서면 true, 반시계 방향이면 false
+const WALKER_OFFSET = 8;         // 북쪽(0°)을 볼 때 보여야 하는 이미지 번호 (아래 '방향 맞추기' 참고)
+const WALKER_FOV  = 120;   // 시야각 부채꼴의 전체 각도(도). 값이 클수록 넓어짐. 90에서 시작해 100~110으로 조절해 보세요
+const WALKER_FEET = 73;   // 아이콘 영역(130px) 안에서 캐릭터 발의 높이(px). 부채꼴의 꼭짓점이자 실제 좌표 위치
+(WALKER_DIRS || []).forEach(src => { new Image().src = src; });   // 16장을 미리 불러와 방향이 바뀔 때 깜빡이지 않게 함
+
+// 거점/관공서/은행: 아래 좌표·이름은 임의 샘플입니다. icon에 이미지 경로를 넣으면 기본 핀 대신 사용합니다.
+const POI = {
+  hub:    {color:'#f08aa6', list:[
+    {name:'원풍경로당', glyph:'🏡', addr:'(우) 57961 (주소) 순천시 풍덕5길 55', lat:34.940947, lng:127.495448},
+  {name:'원풍여자경로당', glyph:'🏡', addr:'(우) 57961 (주소) 순천시 풍덕5길 55', lat:34.940947, lng:127.495448},
+  {name:'중앙경로당', glyph:'🏡', addr:'(우) 57962 (주소) 순천시 역전광장2길 35', lat:34.943778, lng:127.499528},
+    {name:'무지개경로당', glyph:'🏡', addr:'(우) 57963 (주소) 순천시 풍덕주택4길 35', lat:34.942746, lng:127.503846},
+    {name:'상풍경로당', glyph:'🏡', addr:'(우) 57960 (주소) 순천시 상풍길 54', lat:34.948002, lng:127.493949},
+  {name:'주공아파트 경로당', glyph:'🏡', addr:'(우) 57993 (주소) 순천시 풍덕주택길 99', lat:34.939574, lng:127.504888},
+  {name:'하풍경로당', glyph:'🏡', addr:'(우) 57994 (주소) 순천시 하풍길 203', lat:34.937423, lng:127.502378},
+  {name:'동부경로당', glyph:'🏡', addr:'(우) 57962 (주소) 순천시 풍덕주택길 46', lat:34.942593, lng:127.502726},
+  {name:'금호경로당', glyph:'🏡', addr:'(우) 57994 (주소) 순천시 풍덕주택길 96', lat:34.939181, lng:127.502976},
+  {name:'금호여자경로당', glyph:'🏡', addr:'(우) 57994 (주소) 순천시 풍덕주택길 96', lat:34.939181, lng:127.502976},
+  {name:'한신경로당', glyph:'🏡', addr:'(우) 57994 (주소) 순천시 중앙초등길 132', lat:34.937839, lng:127.502348},
+  {name:'철우경로당', glyph:'🏡', addr:'(우) 57994 (주소) 순천시 중앙초등길 163', lat:34.939999, lng:127.503135}]},
+  office: {color:'#6cc3a0', glyph:'🏛️', list:[
+    {name:'건강보험공단', glyph:'🏛️', addr:'(우) 57995 (주소) 순천시 풍덕새길 15-4', lat:34.937958, lng:127.497102},
+    {name:'순천시청', glyph:'🏛️', addr:'(우) 57956 (주소) 순천시 장명로 30', phone:'061-749-3114', lat:34.950352, lng:127.488391},
+  {name:'풍덕동행정복지센터', glyph:'🏢', addr:'(우) 57961 (주소) 순천시 풍덕1길 40', phone:'061-749-8453', lat:34.941855, lng:127.497301},
+    {name:'남제동행정복지센터', glyph:'🏢', addr:'(우) 57958 (주소) 순천시 남정5길 1', phone:'061-749-8456', lat:34.941395, lng:127.487955},
+  {name:'조곡동행정복지센터', glyph:'🏢', addr:'(우) 57955 (주소) 순천시 자경1길 13', phone:'061-749-8381', lat:34.950080, lng:127.498561},
+  {name:'남정동우체국', glyph:'📬️', addr:'(우) 57959 (주소) 순천시 우석로 144', lat:34.941560, lng:127.488727},
+  {name:'조곡동우체국', glyph:'📬️', addr:'(우) 57964 (주소) 순천시 역전길 43', lat:34.946946, lng:127.498966}]},
+  bank:   {color:'#6fb6dc', list:[
+    {name:'새마을금고 정원지점', glyph:'🏦', addr:'(우) 57959 (주소) 순천시 장평로 23-1', lat:34.941915, lng:127.493565},
+    {name:'순천원예농협', glyph:'🏦', addr:'(우) 57996 (주소) 순천시 남산로 46', lat:34.938952, lng:127.492697},
+    {name:'순천원예농협 아랫장지점', glyph:'🏦', addr:'(우) 57959 (주소) 순천시 장평로 55', lat:34.944776, lng:127.493957}]}
+};
+
+/* ========================================================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* ---- 카카오 SDK 로딩 실패 시 원인 안내 (키/도메인/카카오맵 설정 문제일 때 표시됨) ---- */
+if(typeof kakao === 'undefined' || !kakao.maps){
+  document.querySelector('.pane').insertAdjacentHTML('afterbegin',
+    '<div style="position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;background:#fcf2f3;color:#d85e65;font-weight:700;line-height:1.8">카카오 지도 SDK를 불러오지 못했어요.<br>① JavaScript 키 확인 ② 카카오 콘솔에 사이트 도메인 등록 ③ 카카오맵 사용 설정 확인<br>(F12 → Console 탭에서 자세한 원인을 볼 수 있어요)</div>');
+  throw new Error('Kakao SDK not loaded');
+}
+const LL = (lat, lng) => new kakao.maps.LatLng(lat, lng);
+
+/* ---- 토스트 ---- */
+let toastTimer;
+function toast(msg, img='images/pungi_hi.jpg'){
+  $('toast').querySelector('img').src = img;
+  $('toastMsg').textContent = msg;
+  $('toast').classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('toast').classList.remove('show'), 2200);
+}
+
+/* ---- 지도 ---- */
+const map = new kakao.maps.Map($('map'), {center: LL(...CENTER), level: 3});
+map.addControl(new kakao.maps.MapTypeControl(), kakao.maps.ControlPosition.TOPRIGHT);  // 지도/스카이뷰
+map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);        // 줌
+
+let basePos = null;
+const baseMarker = new kakao.maps.Marker();
+
+/* =========================================================
+   1. 주소 검색
+   ========================================================= */
+const ps = new kakao.maps.services.Places();
+const geocoder = new kakao.maps.services.Geocoder();
+
+/* ---- 우편번호 조회 + 표시 형식 ---- */
+let pickSeq = 0;   // 연달아 선택할 때 늦게 도착한 이전 결과가 덮어쓰지 않도록 하는 번호표
+function fmtAddr(zone, addr){                       // "(우) 57961 (주소) 순천시 …" (맨 앞 시·도 이름은 생략)
+  const text = addr || '주소 정보 없음';
+  const shown = addr ? (addr.split(' ').slice(1).join(' ') || addr) : text;
+  return `(우) ${zone || '-'} (주소) ${shown}`;
+}
+function lookupZone(addr, lat, lng, cb){            // 주소로 먼저 조회하고, 실패하면 좌표로 조회
+  const OK = kakao.maps.services.Status.OK;
+  const byCoord = () => geocoder.coord2Address(lng, lat, (r, s) => {
+    cb(s === OK && r[0] && r[0].road_address ? r[0].road_address.zone_no : '');
+  });
+  if(!addr){ byCoord(); return; }
+  geocoder.addressSearch(addr, (r, s) => {
+    if(s === OK && r[0] && r[0].road_address && r[0].road_address.zone_no) cb(r[0].road_address.zone_no);
+    else byCoord();
+  });
+}
+
+const isMobile = () => window.matchMedia('(max-width:768px)').matches;
+function closeResultsOnMobile(){ if(isMobile()) $('resultBox').classList.add('hide'); }
+
+function searchAddress(){
+  $('resultBox').classList.remove('hide');
+  const query = $('q').value.trim();
+  if(!query){ toast('검색어를 입력해 주세요', 'images/pungi_singing.jpg'); return; }
+  $('results').innerHTML = ''; $('pager').innerHTML = '';
+  runKeywordSearch(query, SEARCH_RADIUS);
+}
+function runKeywordSearch(query, radius){
+  const S = kakao.maps.services.Status;
+  const opts = {};
+  if(radius > 0){                                   // 지도 중심 기준 반경 검색 + 거리순
+    opts.location = map.getCenter();
+    opts.radius = radius;
+    opts.sort = kakao.maps.services.SortBy.DISTANCE;
+  }
+  ps.keywordSearch(query, (data, status, pagination) => {
+    if(status === S.OK){
+      renderResults(data.map(p => ({
+		name: p.place_name, road: p.road_address_name, jibun: p.address_name, x: p.x, y: p.y, dist: p.distance, phone: p.phone
+      })));
+      renderPager(pagination);
+    } else if(radius > 0 && status === S.ZERO_RESULT){        // 반경 안에 없으면 전국으로 재검색
+      toast(`반경 ${radius / 1000}km 안에 결과가 없어 전국에서 다시 검색했어요`, 'images/pungi_singing.jpg');
+      runKeywordSearch(query, 0);
+    } else {
+      // 키워드 검색에 없으면 지번/도로명 주소 검색으로 한 번 더 시도
+      geocoder.addressSearch(query, (d, s) => {
+        if(s === S.OK){
+          renderResults(d.map(a => ({
+            name: (a.road_address && a.road_address.address_name) || a.address_name,
+            road: a.road_address ? a.road_address.address_name : '', jibun: a.address_name, x: a.x, y: a.y
+          })));
+        } else showEmpty('검색 결과가 없어요', '다른 키워드로 다시 검색해 보세요');
+      });
+    }
+  }, opts);
+}
+function showEmpty(t, s){
+  $('results').innerHTML = `<li class="empty"><img src="images/pungi_singing.jpg" alt=""><span class="nm">${esc(t)}</span><span class="ad">${esc(s)}</span></li>`;
+}
+const fmtDist = m => { m = Number(m); return m >= 1000 ? (m / 1000).toFixed(1) + 'km' : m + 'm'; };
+function renderResults(items){
+  const ul = $('results'); ul.innerHTML = '';
+  items.forEach(it => {
+    const li = document.createElement('li');
+    const main = it.road || it.jibun;
+    li.innerHTML = `<span class="nm">${esc(it.name)}</span><span class="ad">${esc(main)}</span>` +
+      (it.road && it.jibun && it.road !== it.jibun ? `<span class="ad">(지번) ${esc(it.jibun)}</span>` : '')
+    + (it.phone ? `<span class="ad">☎ ${esc(it.phone)}</span>` : '')
+	+ (it.dist ? `<span class="ad" style="color:#d85e65">지도 중심에서 ${fmtDist(it.dist)}</span>` : '');
+    li.addEventListener('click', () => selectPlace(it));
+    ul.appendChild(li);
+  });
+  ul.scrollTop = 0;
+}
+function renderPager(pg){
+  const box = $('pager'); box.innerHTML = '';
+  if(!pg || pg.last < 2) return;
+  for(let i = 1; i <= pg.last; i++){
+    const b = document.createElement('button');
+    b.textContent = i; if(i === pg.current) b.className = 'cur';
+    b.onclick = () => pg.gotoPage(i);
+    box.appendChild(b);
+  }
+}
+function selectPlace(it){
+  const pos = LL(Number(it.y), Number(it.x));
+  closeResultsOnMobile();
+  basePos = pos;
+  updateDongByPos(pos);
+  addrWin.close();
+  baseMarker.setPosition(pos); baseMarker.setMap(map);
+  map.setLevel(3); map.setCenter(pos);
+  $('picked').classList.add('show');
+  $('pickedName').textContent = it.name;
+  $('pickedPhone').textContent = it.phone ? `(전화) ${it.phone}` : '';
+  const addr = it.road || it.jibun, my = ++pickSeq;
+  $('pickedAddr').textContent = fmtAddr('조회 중…', addr);
+  lookupZone(addr, Number(it.y), Number(it.x), zone => {
+    if(my === pickSeq) $('pickedAddr').textContent = fmtAddr(zone, addr);
+  });
+  $('pickedXY').textContent = `위도 ${Number(it.y).toFixed(6)} / 경도 ${Number(it.x).toFixed(6)}`;
+  toast('여기로 이동했어요!');
+  if(rvOn) moveRoadview(pos);
+}
+$('goSearch').addEventListener('click', searchAddress);
+$('q').addEventListener('keydown', e => { if(e.key === 'Enter' && !e.isComposing) searchAddress(); });
+
+/* =========================================================
+   2. 로드뷰 + 풍이 walker
+   ========================================================= */
+const rv = new kakao.maps.Roadview($('roadview'));
+const rvClient = new kakao.maps.RoadviewClient();
+let rvOn = false, walker = null;
+
+function Walker(pos){
+  const el = document.createElement('div');
+  el.className = 'walker';
+  el.innerHTML = '<div class="cone"></div><img src="images/pungi.jpg" alt="풍이">';
+  el.style.setProperty('--feet', WALKER_FEET + 'px');
+  el.style.setProperty('--fov', WALKER_FOV + 'deg');
+  this.cone = el.firstChild; this.img = el.lastChild; this.hi = false; this.cur = 'images/pungi.jpg';
+  this.useDirs = Array.isArray(WALKER_DIRS) && WALKER_DIRS.length === 16;
+  if(this.useDirs){                                  // 방향별 이미지를 쓰면 처음엔 w0, 모양은 .dir 스타일
+    this.cur = WALKER_DIRS[0]; this.img.src = this.cur; this.img.classList.add('dir');
+  }
+  this.ov = new kakao.maps.CustomOverlay({position: pos, content: el, xAnchor: .5, yAnchor: WALKER_FEET / 130, zIndex: 5});
+  this.img.addEventListener('click', e => {          // 아이콘 클릭 → 인사하는 풍이
+    e.stopPropagation();
+    this.hi = true; this.img.src = 'images/pungi_hi.jpg'; this.img.classList.remove('dir');   // jpg는 원형 틀로 표시
+    toast('안녕하세요, 풍이예요!');
+    setTimeout(() => {
+      this.hi = false; this.img.src = this.cur;
+      if(this.useDirs) this.img.classList.add('dir');
+    }, 1600);
+  });
+}
+Walker.prototype.setAngle = function(pan){
+  this.cone.style.setProperty('--pan', pan + 'deg');
+  if(this.useDirs){
+    let i = Math.round(pan / 22.5) % 16;             // 22.5° 간격, 각 이미지가 해당 각도를 중심으로 표시됨
+    if(!WALKER_CLOCKWISE) i = (16 - i) % 16;
+    i = ((i + WALKER_OFFSET) % 16 + 16) % 16;
+    this.cur = WALKER_DIRS[i];
+    if(!this.hi) this.img.src = this.cur;
+  }
+};
+Walker.prototype.setPosition = function(p){ this.ov.setPosition(p); };
+
+/* --- 로드뷰를 새로 열 때 처음 바라볼 방향 --- */
+const START_PAN = 180; // 0=north, 90=east, 180=south, 270=west
+let rvInited = false, pendingStartView = false;
+function setStartView() { rv.setViewpoint( {pan: START_PAN, tilt: 0, zoom: 0} ); }
+
+function moveRoadview(latlng){
+  rvClient.getNearestPanoId(latlng, 100, panoId => {
+    if(!panoId){ toast('이 주변에는 로드뷰가 없어요', 'images/pungi_singing.jpg'); return; }
+    if(rvInited && panoId === rv.getPanoId()) setStartView(); // 같은 파노라마면 방향만 바꿈
+  else pendingStartView = true;                             // 파노라마가 바뀐 뒤에 적용
+  rv.setPanoId(panoId, latlng);
+  });
+}
+kakao.maps.event.addListener(rv, 'init', () => {
+  if(!walker){ walker = new Walker(rv.getPosition() || map.getCenter()); }
+  walker.ov.setMap(map);
+  rvInited = true;
+  if(pendingStartView) { pendingStartView = false; setStartView(); }
+});
+kakao.maps.event.addListener(rv, 'viewpoint_changed', () => { if(walker) walker.setAngle(rv.getViewpoint().pan); });
+kakao.maps.event.addListener(rv, 'position_changed', () => {
+  const p = rv.getPosition();
+  if(walker) walker.setPosition(p);
+  map.setCenter(p);
+});
+kakao.maps.event.addListener(rv, 'panoid_changed', () => {
+  if(rvInited && pendingStartView) { pendingStartView = false; setStartView(); }
+ });
+/* ---- 지도 클릭: 마커 + 주소 정보 (로드뷰가 켜져 있으면 해당 위치 로드뷰도 함께 이동) ---- */
+const addrWin = new kakao.maps.InfoWindow({removable: true});
+function onMapPick(latlng){
+  closeResultsOnMobile();
+  basePos = latlng;
+  updateDongByPos(latlng);
+  baseMarker.setPosition(latlng); baseMarker.setMap(map);
+  closePoiCard();
+  const lat = latlng.getLat(), lng = latlng.getLng();
+  geocoder.coord2Address(lng, lat, (result, status) => {
+    let road = '', jibun = '', zone='';
+    if(status === kakao.maps.services.Status.OK && result[0]){
+      road = result[0].road_address ? result[0].road_address.address_name : '';
+      jibun = result[0].address ? result[0].address.address_name : '';
+    zone = result[0].road_address ? result[0].road_address.zone_no : '';
+    }
+    addrWin.setContent(
+      `<div style="padding:8px 12px;font-size:12.5px;line-height:1.55;min-width:190px">` +
+    `<b style="color:#d85e65">${esc(fmtAddr(zone, road || jibun))}</b><br>` +
+    `<span>(지번) ${jibun ? esc(jibun) : '주소 정보 없음'}</span><br>` +
+      `<small style="opacity:.7">${lat.toFixed(6)}, ${lng.toFixed(6)}</small></div>`);
+    addrWin.open(map, baseMarker);
+    $('picked').classList.add('show');
+    $('pickedName').textContent = '지도에서 선택한 위치';
+	$('pickedPhone').textContent = '';
+  ++pickSeq;
+  $('pickedAddr').textContent = fmtAddr(zone, road || jibun);
+    $('pickedXY').textContent = `위도 ${lat.toFixed(6)} / 경도 ${lng.toFixed(6)}`;
+  });
+  if(rvOn) moveRoadview(latlng);
+}
+kakao.maps.event.addListener(map, 'click', e => onMapPick(e.latLng));
+
+function toggleRoadview(on){
+  rvOn = on;
+  $('stage').classList.toggle('rv', on);
+  $('rvBtn').classList.toggle('on', on);
+  if(on){ map.addOverlayMapTypeId(kakao.maps.MapTypeId.ROADVIEW); toast('지도를 클릭하면 그 위치의 로드뷰가 열려요'); }
+  else { map.removeOverlayMapTypeId(kakao.maps.MapTypeId.ROADVIEW); if(walker) walker.ov.setMap(null); }
+  setTimeout(() => {                                   // 레이아웃 전환 애니메이션 후 크기 재계산
+    const c = map.getCenter();
+    map.relayout(); map.setCenter(c);
+    if(on){ rv.relayout(); const p = basePos || c; moveRoadview(p); if(walker){ walker.ov.setMap(map); walker.setPosition(p); } }
+  }, 380);
+}
+$('rvBtn').addEventListener('click', () => toggleRoadview(!rvOn));
+$('rvClose').addEventListener('click', () => toggleRoadview(false));
+
+/* =========================================================
+   3. 레이어: 경계(geojson) / 마커
+   ========================================================= */
+const layers = {};
+const boundaryStyle = (hl, color) => ({strokeWeight: hl ? 3 : 2, fillColor: hl ? color : '#ffffff', fillOpacity: hl ? .25 : .03});   // 강조 구역 / 나머지 구역
+
+async function buildBoundary(url, o){
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(res.status);
+  const g = await res.json();
+  const items = [], labels = [];
+  g.features.forEach(f => {
+    const p = f.properties || {};
+    const name = o.label(p);
+    const hl = o.highlight ? o.highlight(name) : false;
+    const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    let big = null;
+    polys.forEach(rings => {
+      const path = rings.map(r => r.map(c => LL(c[1], c[0])));   // [외곽, 구멍...]
+      const pg = new kakao.maps.Polygon({path, strokeColor: o.color, strokeOpacity: .9, ...boundaryStyle(hl, o.color)});
+      pg.dongName = name;                                            // 나중에 강조할 구역을 찾기 위해 이름 저장
+      kakao.maps.event.addListener(pg, 'click', e => onMapPick(e.latLng));   // 경계가 켜져 있어도 클릭 동작 동일
+      items.push(pg);
+      if(!big || rings[0].length > big.length) big = rings[0];
+    });
+    if(name && big){                                              // 라벨 위치: 가장 큰 폴리곤의 범위 중심
+      let a = 90, b = 0, c = 180, d = 0;
+      big.forEach(([x, y]) => { a = Math.min(a, y); b = Math.max(b, y); c = Math.min(c, x); d = Math.max(d, x); });
+      labels.push(new kakao.maps.CustomOverlay({position: LL((a + b) / 2, (c + d) / 2),
+        content: `<span class="blabel ${o.cls || ''}">${esc(name)}</span>`, yAnchor: .5, xAnchor: .5}));
+    }
+  });
+  return {items, labels};
+}
+/* ---- 선택한 주소가 속한 행정동 강조 ---- */
+let currentDong = HIGHLIGHT_DONG;        // 처음엔 풍덕동, 주소를 선택하면 그 주소의 행정동으로 바뀜
+function applyDongHighlight(){
+  if(!layers.dong) return;               // 경계 레이어를 아직 안 켰으면 나중에 켤 때 자동 적용됨
+  layers.dong.items.forEach(pg => {
+    const hl = pg.dongName === currentDong;
+    pg.setOptions(boundaryStyle(hl, BOUNDARY.dong.color));
+  });
+}
+function updateDongByPos(latlng){
+  geocoder.coord2RegionCode(latlng.getLng(), latlng.getLat(), (res, status) => {
+    if(status !== kakao.maps.services.Status.OK) return;
+    const h = res.find(r => r.region_type === 'H');      // H = 행정동
+    if(h){ currentDong = h.region_3depth_name; applyDongHighlight(); }
+  });
+}
+
+const BOUNDARY = {
+  dong: {url: DONG_URL, color: '#d85e65', label: p => (p.adm_nm || '').split(' ').pop(), highlight: n => n === currentDong}
+};
+/* ---- 거점 정보 오버레이 (한 번에 하나만 열림) ---- */
+let poiOverlay = null, poiOpenFor = null;
+function closePoiCard(){
+  if(poiOverlay){ poiOverlay.setMap(null); poiOverlay = null; poiOpenFor = null; }
+}
+/* ---- 거점을 선택했을 때 주소·좌표 카드 갱신 (검색 선택, 지도 클릭과 같은 처리) ---- */
+function pickPoi(marker, it){
+  const pos = marker.getPosition();
+  basePos = pos;                     // 이후 로드뷰를 켤 때의 시작 위치
+  updateDongByPos(pos);              // 이 거점이 속한 행정동 강조
+  $('picked').classList.add('show');
+  $('pickedName').textContent = it.name;
+  $('pickedPhone').textContent = it.phone ? `(전화) ${it.phone}` : '';
+  ++pickSeq;                         // 진행 중인 우편번호 조회 결과가 덮어쓰지 않도록
+  $('pickedAddr').textContent = it.addr || '주소 정보 없음';
+  $('pickedXY').textContent = `위도 ${pos.getLat().toFixed(6)} / 경도 ${pos.getLng().toFixed(6)}`;
+  closeResultsOnMobile();            // 모바일이면 검색 결과 목록 닫기
+  if(rvOn) moveRoadview(pos);        // 로드뷰가 켜져 있으면 그 위치로 이동
+}
+
+function openPoiCard(marker, it){
+  if(poiOpenFor === marker){ closePoiCard(); return; }   // 열려 있는 마커를 다시 누르면 닫기
+  closePoiCard();
+  pickPoi(marker, it);
+  const card = document.createElement('div');
+  card.className = 'poi-card';
+  const title = document.createElement('div');  title.className = 'poi-title'; title.textContent = it.name;
+  const addr  = document.createElement('div');  addr.className  = 'poi-addr';  addr.textContent  = it.addr || '주소 정보 없음';
+  const x = document.createElement('button');
+  x.type = 'button'; x.className = 'poi-close'; x.setAttribute('aria-label', '닫기'); x.textContent = '✕';
+  x.addEventListener('click', closePoiCard);
+  if(it.phone){
+    const tel = document.createElement('div');
+    tel.className = 'poi-tel';
+    tel.textContent = `(전화) ${it.phone}`;
+    card.append(title, addr, tel, x);
+  } else {
+    card.append(title, addr, x);
+  }
+  poiOverlay = new kakao.maps.CustomOverlay({position: marker.getPosition(), content: card,
+                                             yAnchor: 1, zIndex: 10, clickable: true});
+  poiOverlay.setMap(map);
+  poiOpenFor = marker;
+  map.panTo(marker.getPosition());
+}
+/* =========================================================
+   민원 등록 — 페이지를 열어 둔 동안만 메모리에 보관 (새로고침·탭 닫기 시 사라짐)
+   ========================================================= */
+const complaints = [];           // {no, time, name, content, phone, addr, note, lat, lng, marker}
+let complaintSeq = 0, lastReceiver = '';
+const CMP_COLOR = '#ecb73a';
+const fmtTime = d => d.toLocaleString('ko-KR', {hour12: false});
+
+function currentPickedAddr(){                      // 왼쪽 카드의 "(우) 12345 (주소) ○○" 에서 주소 부분만 꺼냄
+  const t = $('pickedAddr').textContent || '';
+  const i = t.indexOf('(주소)');
+  return (i >= 0 ? t.slice(i + 4) : t).trim();
+}
+function openComplaintModal(){
+  if(!basePos){ toast('먼저 주소를 검색하거나 지도를 클릭해 위치를 선택해 주세요', 'images/pungi_singing.jpg'); return; }
+  $('cmpAddr').value = currentPickedAddr();
+  $('cmpName').value = lastReceiver;               // 접수자는 이번 접속 중에는 이전 입력값을 기억
+  $('cmpPhone').value = ''; $('cmpContent').value = ''; $('cmpNote').value = '';
+  $('cmpModal').classList.add('show');
+  $('cmpContent').focus();
+}
+function closeComplaintModal(){ $('cmpModal').classList.remove('show'); }
+
+function saveComplaint(){
+  const content = $('cmpContent').value.trim();
+  if(!content){ toast('민원 내용을 입력해 주세요', 'images/pungi_singing.jpg'); $('cmpContent').focus(); return; }
+  const c = {
+    no: ++complaintSeq, time: new Date(),
+    name: $('cmpName').value.trim(), content,
+    phone: $('cmpPhone').value.trim(), addr: $('cmpAddr').value.trim(), note: $('cmpNote').value.trim(),
+    lat: basePos.getLat(), lng: basePos.getLng(), marker: null
+  };
+  lastReceiver = c.name;
+  complaints.push(c);
+  closeComplaintModal();
+  toast(`민원 #${c.no} 등록 완료`);
+  const btn = document.querySelector('.tg[data-k=complaint]');
+  if(!btn.classList.contains('on')) toggleLayer(btn);     // 레이어가 꺼져 있으면 켜서 바로 보여 줌
+  else { addComplaintMarker(c); renderComplaintList(); }
+}
+
+function addComplaintMarker(c){
+  c.marker = new kakao.maps.Marker({position: LL(c.lat, c.lng), title: `민원 #${c.no}`,
+    image: pin(CMP_COLOR, c.no < 100 ? String(c.no) : '+')});   // 핀 안에 순번 표시
+  c.marker.setMap(map);
+  kakao.maps.event.addListener(c.marker, 'click', () => showComplaint(c));
+}
+function showComplaint(c){                          // 거점과 같은 정보 창을 재사용
+  const title = c.content.length > 24 ? c.content.slice(0, 24) + '…' : c.content;
+  openPoiCard(c.marker, {name: `#${c.no} ${title}`, addr: c.addr, lat: c.lat, lng: c.lng});
+}
+
+function renderComplaintList(){
+  $('cmpCount').textContent = complaints.length;
+  const ul = $('cmpList'); ul.innerHTML = '';
+  if(!complaints.length){ ul.innerHTML = '<li class="cmp-empty">등록된 민원이 없어요</li>'; return; }
+  [...complaints].reverse().forEach(c => {          // 최근 등록이 위로
+    const li = document.createElement('li');
+    const row = (cls, text) => { const d = document.createElement('div'); d.className = cls; d.textContent = text; li.appendChild(d); };
+    row('cmp-head', `#${c.no}  ${fmtTime(c.time)}`);
+    row('cmp-content', c.content);
+    row('cmp-meta', `접수자 ${c.name || '-'} · 연락처 ${c.phone || '-'}`);
+    row('cmp-addr', c.addr || '주소 정보 없음');
+    if(c.note) row('cmp-note', `비고: ${c.note}`);
+    li.addEventListener('click', () => { map.panTo(LL(c.lat, c.lng)); showComplaint(c); });
+    ul.appendChild(li);
+  });
+}
+function setComplaintLayer(on){                     // 민원정보 레이어 켜기/끄기
+  if(on){
+    complaints.forEach(c => { if(c.marker) c.marker.setMap(map); else addComplaintMarker(c); });
+    renderComplaintList();
+    $('cmpPanel').classList.add('show');
+  } else {
+    complaints.forEach(c => { if(c.marker) c.marker.setMap(null); });
+    $('cmpPanel').classList.remove('show');
+    if(poiOpenFor && complaints.some(c => c.marker === poiOpenFor)) closePoiCard();
+  }
+}
+
+$('cmpBtn').addEventListener('click', openComplaintModal);
+$('cmpCancel').addEventListener('click', closeComplaintModal);
+$('cmpSave').addEventListener('click', saveComplaint);
+$('cmpFold').addEventListener('click', () => {
+  const folded = $('cmpPanel').classList.toggle('folded');
+  $('cmpFold').textContent = folded ? '펴기 ▾' : '접기 ▴';
+});
+/* ---- 연락처 입력 마스크: 숫자만 입력하면 하이픈을 자동으로 넣음 ---- */
+function formatPhone(raw){
+  let d = raw.replace(/^\+82\s*-?\s*0?/, '0').replace(/\D/g, '');
+  if(/^1[5-9]/.test(d)) return d.slice(0, 8).replace(/^(\d{4})(\d{1,4})$/, '$1-$2');   // 1588-1234 같은 대표번호
+  d = d.slice(0, d.startsWith('02') ? 10 : 11);
+  const p = d.startsWith('02') ? 2 : 3;
+  if(d.length <= p) return d;
+  const rest = d.slice(p);
+  const midLen = d.startsWith('010') ? 4 : (d.length >= p + 8 ? 4 : 3);
+  const mid = rest.slice(0, midLen), tail = rest.slice(midLen);
+  return tail ? `${d.slice(0, p)}-${mid}-${tail}` : `${d.slice(0, p)}-${mid}`;
+}
+$('cmpPhone').addEventListener('input', e => { e.target.value = formatPhone(e.target.value); });
+
+
+function pin(color, glyph){
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="46" viewBox="0 0 36 46"><path d="M18 45C18 45 3 28 3 17a15 15 0 0 1 30 0c0 11-15 28-15 28z" fill="${color}" stroke="#fff" stroke-width="2.5"/><circle cx="18" cy="17" r="9.5" fill="#fff"/><text x="18" y="22" font-size="13" font-weight="700" text-anchor="middle" fill="#4a3a3d">${glyph}</text></svg>`;
+  return new kakao.maps.MarkerImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
+    new kakao.maps.Size(36, 46), {offset: new kakao.maps.Point(18, 46)});
+}
+function buildPoi(k){
+  const cfg = POI[k];
+  return cfg.list.map(it => {
+    const image = it.icon ? new kakao.maps.MarkerImage(it.icon, new kakao.maps.Size(40, 40)) : pin(cfg.color, it.glyph);
+    const m = new kakao.maps.Marker({position: LL(it.lat, it.lng), image, title: it.name});
+    kakao.maps.event.addListener(m, 'click', () => openPoiCard(m, it));
+  return m;
+  });
+}
+async function toggleLayer(btn){
+  const k = btn.dataset.k;
+  const turnOn = !btn.classList.contains('on');
+  btn.classList.toggle('on', turnOn);
+  if(k === 'complaint'){ setComplaintLayer(turnOn); return; }
+  try{
+    if(BOUNDARY[k]){
+      if(!layers[k]) layers[k] = await buildBoundary(BOUNDARY[k].url, BOUNDARY[k]);
+      layers[k].items.forEach(o => o.setMap(turnOn ? map : null));
+      layers[k].labels.forEach(o => o.setMap(turnOn ? map : null));
+    } else {
+      if(!layers[k]) layers[k] = {items: buildPoi(k), labels: []};
+      layers[k].items.forEach(o => o.setMap(turnOn ? map : null));
+      if(!turnOn && layers[k].items.includes(poiOpenFor)) closePoiCard();
+    }
+  } catch(err){
+    btn.classList.remove('on');
+    toast(BOUNDARY[k] ? '경계 파일을 불러오지 못했어요 (웹서버로 실행 중인지, 파일 경로를 확인해 주세요)' : '레이어 오류', 'images/pungi_singing.jpg');
+    console.error(err);
+  }
+}
+document.querySelectorAll('.tg').forEach(b => b.addEventListener('click', () => toggleLayer(b)));
+
+window.addEventListener('beforeunload', e => {
+  if(complaints.length){ e.preventDefault(); e.returnValue = ''; }
+});
+</script>
+</body>
+</html>
