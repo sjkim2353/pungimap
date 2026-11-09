@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">   <!-- 검색엔진 노출 방지 -->
 <title>우리 동네 알리미</title>
-<!-- ★ 아래 appkey=MYKEY 를 카카오 개발자 콘솔의 JavaScript 키로 바꿔주세요 (사이트 도메인 등록 필요) -->
+<!-- KAKAO MAPS API KEY -->
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f76517b1c8daf47329246d1c11502a2b&libraries=services"></script>
 <style>
 :root{
@@ -22,7 +22,7 @@ button,input,textarea{font-family:inherit}   /* 버튼·입력창도 페이지�
 body{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;color:var(--ink);
   background:
     linear-gradient(160deg, rgba(255,255,255,.55), rgba(255,255,255,.2)),   /* 이미지 위의 흰 막: 글씨가 잘 보이게 */
-    url('images/bg.png') center / cover no-repeat,                          /* 배경 이미지 */
+    url('images/background.png') center / cover no-repeat,                          /* 배경 이미지 */
     linear-gradient(160deg, var(--bg1), var(--bg2) 60%, var(--bg3))}        /* 이미지가 없을 때 대신 보이는 색 */
 .app{display:grid;grid-template-columns:minmax(300px,26%) 1fr;height:100vh;height:100dvh;gap:12px;padding:12px}
 #resultBox{display:contents}   /* 컴퓨터 화면에서는 감싸는 상자가 없는 것처럼 동작 */
@@ -64,7 +64,7 @@ body{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;color:va
 .tg{border:2px solid var(--line);background:#fff;color:var(--ink);border-radius:14px;padding:9px 6px;font-size:13px;cursor:pointer;font-weight:600;transition:.15s}
 .tg:hover{background:#fcf2f3}
 .tg.on{color:#fff;border-color:transparent}
-.tg[data-k=dong].on{background:var(--rose-d)} .tg[data-k=complaint].on{background:#ecb73a;color:#4a3a3d}
+.tg[data-k=dong].on{background:var(--rose-d)} .tg[data-k=poc].on{background:#ecb73a;color:#4a3a3d}
 .tg[data-k=hub].on{background:#f08aa6} .tg[data-k=office].on{background:#6cc3a0}
 .tg[data-k=bank].on{background:#6fb6dc}
 
@@ -111,14 +111,13 @@ body{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;color:va
 .poi-title{font-size:17px;font-weight:800;line-height:1.35;color:var(--ink)}
 .poi-addr{margin-top:5px;font-size:12.5px;line-height:1.4;color:#999}
 .poi-tel{margin-top:3px;font-size:12.5px;font-weight:700;color:var(--green-d)}
+.poi-content{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);max-height:140px;overflow:auto;
+    font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
 .poi-close{position:absolute;top:6px;right:8px;width:26px;height:26px;border:0;border-radius:50%;
   background:none;font-size:15px;color:#b5b5b5;cursor:pointer}
 .poi-close:hover{background:#faecec;color:var(--rose-d)}
 /* ---------- 지도 위 버튼 묶음 ---------- */
 .mapbtns{position:absolute;top:12px;left:12px;z-index:10;display:flex;gap:8px;align-items:stretch}   /* 두 버튼 높이를 같게 */
-.cmpbtn{display:flex;align-items:center;border:2px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font-weight:700;
-  color:var(--ink);cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.12)}
-.cmpbtn:hover{background:#fdf6e7;border-color:#ecb73a}
 /* 지도 위 버튼 3종(로드뷰·민원 등록·로드뷰 닫기)의 글자 크기는 --btn-fs 한 곳에서 조절 */
 .pane{--btn-fs:14px}
 .rvbtn,.cmpbtn,.rvclose{font-size:var(--btn-fs);line-height:1.2}
@@ -135,7 +134,10 @@ body{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;color:va
   flex-direction:column;overflow:hidden;border:2px solid #ecb73a;border-radius:16px;
   background:rgba(255,255,255,.95);backdrop-filter:blur(4px);box-shadow:0 8px 22px rgba(0,0,0,.25)}
 .cmp-panel.show{display:flex}
-.cmp-top{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:rgba(236,183,58,.28)}
+.cmp-top{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:rgba(236,183,58,.28);
+cursor:move;user-select:none;touch-action:none}
+.cmp-alpha{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:12px}
+.cmp-alpha input{flex:1}
 .cmp-top button{border:0;background:none;color:var(--ink);font-weight:700;cursor:pointer}
 .cmp-body{display:flex;flex-direction:column;flex:1;min-height:0}
 .cmp-panel.folded .cmp-body{display:none}
@@ -147,17 +149,6 @@ body{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;color:va
 .cmp-content{margin:4px 0;font-size:14px;font-weight:700;white-space:pre-wrap;word-break:break-word}
 .cmp-meta,.cmp-addr,.cmp-note{font-size:12px;line-height:1.45;color:#8a8a8a;word-break:break-word}
 
-/* ---------- 민원 입력 팝업 ---------- */
-.modal{display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;padding:12px;background:rgba(74,58,61,.45)}
-.modal.show{display:flex}
-.modal-box{width:min(420px,100%);max-height:100%;overflow:auto;padding:18px;background:#fff;border:3px solid #ecb73a;border-radius:20px;box-shadow:0 12px 30px rgba(0,0,0,.3)}
-.modal-box h3{margin:0 0 12px;color:var(--rose-d)}
-.modal-box label{display:block;margin-bottom:10px;font-size:12px;font-weight:700}
-.modal-box input,.modal-box textarea{display:block;width:100%;margin-top:4px;padding:9px 11px;border:2px solid var(--line);
-  border-radius:12px;font:inherit;font-size:14px;color:var(--ink);outline:none}
-.modal-box input:focus,.modal-box textarea:focus{border-color:var(--rose)}
-.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
-.btn-sub{border:2px solid var(--line);background:#fff;color:var(--ink);border-radius:14px;padding:9px 16px;font-weight:700;cursor:pointer}
 /* ※ 규칙 순서 주의: 우선순위가 같으면 나중에 쓴 규칙이 이기므로, 모바일(@media) 블록은 항상 아래에 둡니다 */
 /* =========================================================
    모바일 화면 (너비 768px 이하) — 컴퓨터 화면에는 영향 없음
@@ -205,6 +196,13 @@ body{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;color:va
   .cmpbtn{padding:7px 12px}
   .cmp-panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:46%}   /* 모바일은 아래쪽 창 */
   .modal-box input,.modal-box textarea{font-size:16px}                           /* 아이폰 입력 시 확대 방지 */
+  /* 레이어 버튼 순서(모바일 전용): 숫자가 작을수록 왼쪽 */
+  .tg[data-k=dong]{order:1}
+  .tg[data-k=poc]{order:2}
+  .tg[data-k=hub]{order:3}
+  .tg[data-k=office]{order:4}
+  .tg[data-k=bank]{order:5}
+  .cmp-top{cursor:default}
 }
 </style>
 </head>
@@ -234,19 +232,23 @@ body{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;color:va
 	</div>
 
     <div id="resultBox">
-    <ul id="results">
-      <li class="empty intro"><img src="images/pungi_singing.jpg" alt=""><span class="nm">주소를 검색해 보세요</span><span class="ad">검색 결과에서 선택하면 지도가 이동해요</span></li>
-    </ul>
+      <ul id="results">
+        <li class="empty intro">
+		<img src="images/pungi_singing.jpg" alt="">
+		<span class="nm">주소를 검색해 보세요</span>
+		<span class="ad">검색 결과에서 선택하면 지도가 이동해요</span>
+		</li>
+      </ul>
     <div id="pager"></div>
     </div>
 
     <div class="layers">
       <h2>지도 레이어</h2>
       <div class="grid">
-    <button class="tg" data-k="hub">주변 복지관</button>
+	    <button class="tg" data-k="hub">주변 복지관</button>
         <button class="tg" data-k="dong">행정구역 경계</button>
-    <button class="tg" data-k="office">주변 관공서</button>
-        <button class="tg" data-k="complaint">민원정보</button>
+        <button class="tg" data-k="office">주변 관공서</button>
+        <button class="tg" data-k="poc">민원 다발 지역</button>
         <button class="tg" data-k="bank">주변 은행</button>
       </div>
     </div>
@@ -258,14 +260,14 @@ body{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;color:va
       <div id="map"></div>
     <div class="mapbtns">
       <button class="rvbtn" id="rvBtn"><img src="images/pungi_face.png" alt="">로드뷰</button>
-      <button class="cmpbtn" id="cmpBtn">📌 민원 등록</button>
     </div>
     <aside class="cmp-panel" id="cmpPanel">
       <div class="cmp-top">
-        <b>📋 민원 목록 <span id="cmpCount">0</span>건</b>
+        <b>📍 민원 다발 지역 <span id="cmpCount">0</span>곳</b>
       <button type="button" id="cmpFold">접기 ▴</button>
       </div>
           <div class="cmp-body">
+		    <label class="cmp-alpha">투명도 <input type="range" id="cmpAlpha" min="30" max="100" value="100"></label>
             <ul id="cmpList"></ul>
           </div>
         </aside>
@@ -276,20 +278,6 @@ body{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;color:va
     </section>
   </main>
 </div>
-<div class="modal" id="cmpModal">
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cmpTitle">
-    <h3 id="cmpTitle">📌 민원 등록</h3>
-    <label>주소 (선택한 위치, 수정 가능)<input id="cmpAddr" type="text"></label>
-    <label>접수자<input id="cmpName" type="text" autocomplete="off"></label>
-    <label>민원인 연락처<input id="cmpPhone" type="tel" placeholder="010-0000-0000" autocomplete="off"></label>
-    <label>민원 내용 *<textarea id="cmpContent" rows="4"></textarea></label>
-    <label>비고(참고 내용)<input id="cmpNote" type="text" autocomplete="off"></label>
-    <div class="modal-btns">
-      <button type="button" class="btn-sub" id="cmpCancel">취소</button>
-      <button type="button" class="btn" id="cmpSave">등록</button>
-    </div>
-  </div>
-</div>
 <div id="toast"><img src="images/pungi_hi.jpg" alt=""><span id="toastMsg"></span></div>
 
 <script>
@@ -298,6 +286,8 @@ body{font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;color:va
    ========================================================= */
 const CENTER = [34.941855, 127.497301];          // 기본 중심(풍덕동 행정복지센터 가정 — 실제 좌표로 수정)
 const DONG_URL = 'data/suncheon_dong.geojson';   // 순천시만 추출한 행정동 경계
+const POI_URL = 'data/poi.json';                 // 복지관·관공서·은행 등 거점 데이터
+const POC_URL = 'data/poc.json';                 // 민원 다발 지역 데이터
 const HIGHLIGHT_DONG = '풍덕동';
 const SEARCH_RADIUS = 5000;                    // 주소 검색 반경(m, 지도 중심 기준). 0이면 전국
 const WALKER_DIRS = Array.from({length:16}, (_, i) => `images/turnaroundview/w${i}.png`);
@@ -306,35 +296,6 @@ const WALKER_OFFSET = 8;         // 북쪽(0°)을 볼 때 보여야 하는 이�
 const WALKER_FOV  = 120;   // 시야각 부채꼴의 전체 각도(도). 값이 클수록 넓어짐. 90에서 시작해 100~110으로 조절해 보세요
 const WALKER_FEET = 73;   // 아이콘 영역(130px) 안에서 캐릭터 발의 높이(px). 부채꼴의 꼭짓점이자 실제 좌표 위치
 (WALKER_DIRS || []).forEach(src => { new Image().src = src; });   // 16장을 미리 불러와 방향이 바뀔 때 깜빡이지 않게 함
-
-// 거점/관공서/은행: 아래 좌표·이름은 임의 샘플입니다. icon에 이미지 경로를 넣으면 기본 핀 대신 사용합니다.
-const POI = {
-  hub:    {color:'#f08aa6', list:[
-    {name:'원풍경로당', glyph:'🏡', addr:'(우) 57961 (주소) 순천시 풍덕5길 55', lat:34.940947, lng:127.495448},
-  {name:'원풍여자경로당', glyph:'🏡', addr:'(우) 57961 (주소) 순천시 풍덕5길 55', lat:34.940947, lng:127.495448},
-  {name:'중앙경로당', glyph:'🏡', addr:'(우) 57962 (주소) 순천시 역전광장2길 35', lat:34.943778, lng:127.499528},
-    {name:'무지개경로당', glyph:'🏡', addr:'(우) 57963 (주소) 순천시 풍덕주택4길 35', lat:34.942746, lng:127.503846},
-    {name:'상풍경로당', glyph:'🏡', addr:'(우) 57960 (주소) 순천시 상풍길 54', lat:34.948002, lng:127.493949},
-  {name:'주공아파트 경로당', glyph:'🏡', addr:'(우) 57993 (주소) 순천시 풍덕주택길 99', lat:34.939574, lng:127.504888},
-  {name:'하풍경로당', glyph:'🏡', addr:'(우) 57994 (주소) 순천시 하풍길 203', lat:34.937423, lng:127.502378},
-  {name:'동부경로당', glyph:'🏡', addr:'(우) 57962 (주소) 순천시 풍덕주택길 46', lat:34.942593, lng:127.502726},
-  {name:'금호경로당', glyph:'🏡', addr:'(우) 57994 (주소) 순천시 풍덕주택길 96', lat:34.939181, lng:127.502976},
-  {name:'금호여자경로당', glyph:'🏡', addr:'(우) 57994 (주소) 순천시 풍덕주택길 96', lat:34.939181, lng:127.502976},
-  {name:'한신경로당', glyph:'🏡', addr:'(우) 57994 (주소) 순천시 중앙초등길 132', lat:34.937839, lng:127.502348},
-  {name:'철우경로당', glyph:'🏡', addr:'(우) 57994 (주소) 순천시 중앙초등길 163', lat:34.939999, lng:127.503135}]},
-  office: {color:'#6cc3a0', glyph:'🏛️', list:[
-    {name:'건강보험공단', glyph:'🏛️', addr:'(우) 57995 (주소) 순천시 풍덕새길 15-4', lat:34.937958, lng:127.497102},
-    {name:'순천시청', glyph:'🏛️', addr:'(우) 57956 (주소) 순천시 장명로 30', phone:'061-749-3114', lat:34.950352, lng:127.488391},
-  {name:'풍덕동행정복지센터', glyph:'🏢', addr:'(우) 57961 (주소) 순천시 풍덕1길 40', phone:'061-749-8453', lat:34.941855, lng:127.497301},
-    {name:'남제동행정복지센터', glyph:'🏢', addr:'(우) 57958 (주소) 순천시 남정5길 1', phone:'061-749-8456', lat:34.941395, lng:127.487955},
-  {name:'조곡동행정복지센터', glyph:'🏢', addr:'(우) 57955 (주소) 순천시 자경1길 13', phone:'061-749-8381', lat:34.950080, lng:127.498561},
-  {name:'남정동우체국', glyph:'📬️', addr:'(우) 57959 (주소) 순천시 우석로 144', lat:34.941560, lng:127.488727},
-  {name:'조곡동우체국', glyph:'📬️', addr:'(우) 57964 (주소) 순천시 역전길 43', lat:34.946946, lng:127.498966}]},
-  bank:   {color:'#6fb6dc', list:[
-    {name:'새마을금고 정원지점', glyph:'🏦', addr:'(우) 57959 (주소) 순천시 장평로 23-1', lat:34.941915, lng:127.493565},
-    {name:'순천원예농협', glyph:'🏦', addr:'(우) 57996 (주소) 순천시 남산로 46', lat:34.938952, lng:127.492697},
-    {name:'순천원예농협 아랫장지점', glyph:'🏦', addr:'(우) 57959 (주소) 순천시 장평로 55', lat:34.944776, lng:127.493957}]}
-};
 
 /* ========================================================= */
 const $ = id => document.getElementById(id);
@@ -657,19 +618,19 @@ let poiOverlay = null, poiOpenFor = null;
 function closePoiCard(){
   if(poiOverlay){ poiOverlay.setMap(null); poiOverlay = null; poiOpenFor = null; }
 }
-/* ---- 거점을 선택했을 때 주소·좌표 카드 갱신 (검색 선택, 지도 클릭과 같은 처리) ---- */
+/* ---- 거점·민원 다발 지역 마커를 선택했을 때 왼쪽 카드 갱신 ---- */
 function pickPoi(marker, it){
   const pos = marker.getPosition();
-  basePos = pos;                     // 이후 로드뷰를 켤 때의 시작 위치
-  updateDongByPos(pos);              // 이 거점이 속한 행정동 강조
+  basePos = pos;                                     // 이후 로드뷰를 켤 때의 시작 위치
+  updateDongByPos(pos);                              // 이 지점이 속한 행정동 강조
   $('picked').classList.add('show');
-  $('pickedName').textContent = it.name;
-  $('pickedPhone').textContent = it.phone ? `(전화) ${it.phone}` : '';
-  ++pickSeq;                         // 진행 중인 우편번호 조회 결과가 덮어쓰지 않도록
-  $('pickedAddr').textContent = it.addr || '주소 정보 없음';
+  $('pickedName').textContent = it.title || it.name;
+  ++pickSeq;                                         // 진행 중인 우편번호 조회 결과가 덮어쓰지 않도록
+  $('pickedAddr').textContent = it.addr || it.road || it.jibun || '주소 정보 없음';
+  const ph = $('pickedPhone'); if(ph) ph.textContent = it.phone ? `(전화) ${it.phone}` : '';
   $('pickedXY').textContent = `위도 ${pos.getLat().toFixed(6)} / 경도 ${pos.getLng().toFixed(6)}`;
-  closeResultsOnMobile();            // 모바일이면 검색 결과 목록 닫기
-  if(rvOn) moveRoadview(pos);        // 로드뷰가 켜져 있으면 그 위치로 이동
+  closeResultsOnMobile();                            // 모바일이면 검색 결과 목록 닫기
+  if(rvOn) moveRoadview(pos);                        // 로드뷰가 켜져 있으면 그 위치로 이동
 }
 
 function openPoiCard(marker, it){
@@ -678,19 +639,21 @@ function openPoiCard(marker, it){
   pickPoi(marker, it);
   const card = document.createElement('div');
   card.className = 'poi-card';
-  const title = document.createElement('div');  title.className = 'poi-title'; title.textContent = it.name;
-  const addr  = document.createElement('div');  addr.className  = 'poi-addr';  addr.textContent  = it.addr || '주소 정보 없음';
+  const add = (cls, text) => {                           // 내용이 있을 때만 한 줄 추가 (textContent라 특수문자도 안전)
+    if(!text) return;
+    const d = document.createElement('div'); d.className = cls; d.textContent = text; card.appendChild(d);
+  };
+  add('poi-title', it.title || it.name);                 // 1. 제목
+  if(it.road || it.jibun){                               // 2. 주소: 도로명, 지번 (민원 다발 지역)
+    add('poi-addr', it.road ? `도로명 ${it.road}` : '');
+    add('poi-addr', it.jibun ? `지번 ${it.jibun}` : '');
+  } else add('poi-addr', it.addr || '주소 정보 없음');   //    거점은 기존처럼 addr 한 줄
+  add('poi-tel', it.phone ? `(전화) ${it.phone}` : '');
+  add('poi-content', it.content);                        // 3. 내용
   const x = document.createElement('button');
   x.type = 'button'; x.className = 'poi-close'; x.setAttribute('aria-label', '닫기'); x.textContent = '✕';
   x.addEventListener('click', closePoiCard);
-  if(it.phone){
-    const tel = document.createElement('div');
-    tel.className = 'poi-tel';
-    tel.textContent = `(전화) ${it.phone}`;
-    card.append(title, addr, tel, x);
-  } else {
-    card.append(title, addr, x);
-  }
+  card.appendChild(x);
   poiOverlay = new kakao.maps.CustomOverlay({position: marker.getPosition(), content: card,
                                              yAnchor: 1, zIndex: 10, clickable: true});
   poiOverlay.setMap(map);
@@ -698,147 +661,135 @@ function openPoiCard(marker, it){
   map.panTo(marker.getPosition());
 }
 /* =========================================================
-   민원 등록 — 페이지를 열어 둔 동안만 메모리에 보관 (새로고침·탭 닫기 시 사라짐)
+   민원 다발 지역: data/poc.json 의 지점을 마커로 표시하고, 오른쪽 목록 창에 나열
    ========================================================= */
-const complaints = [];           // {no, time, name, content, phone, addr, note, lat, lng, marker}
-let complaintSeq = 0, lastReceiver = '';
-const CMP_COLOR = '#ecb73a';
-const fmtTime = d => d.toLocaleString('ko-KR', {hour12: false});
-
-function currentPickedAddr(){                      // 왼쪽 카드의 "(우) 12345 (주소) ○○" 에서 주소 부분만 꺼냄
-  const t = $('pickedAddr').textContent || '';
-  const i = t.indexOf('(주소)');
-  return (i >= 0 ? t.slice(i + 4) : t).trim();
+async function setPocLayer(on){
+  if(on){
+    if(!layers.poc){
+      const cfg = await loadJson(POC_URL);
+      if(!layers.poc) layers.poc = {items: buildPoi(cfg), labels: []};
+    }
+    layers.poc.items.forEach(m => m.setMap(map));
+    renderPocList();
+    $('cmpPanel').classList.add('show');
+  } else {
+    if(layers.poc) layers.poc.items.forEach(m => m.setMap(null));
+    $('cmpPanel').classList.remove('show');
+    if(layers.poc && layers.poc.items.includes(poiOpenFor)) closePoiCard();
+  }
 }
-function openComplaintModal(){
-  if(!basePos){ toast('먼저 주소를 검색하거나 지도를 클릭해 위치를 선택해 주세요', 'images/pungi_singing.jpg'); return; }
-  $('cmpAddr').value = currentPickedAddr();
-  $('cmpName').value = lastReceiver;               // 접수자는 이번 접속 중에는 이전 입력값을 기억
-  $('cmpPhone').value = ''; $('cmpContent').value = ''; $('cmpNote').value = '';
-  $('cmpModal').classList.add('show');
-  $('cmpContent').focus();
-}
-function closeComplaintModal(){ $('cmpModal').classList.remove('show'); }
-
-function saveComplaint(){
-  const content = $('cmpContent').value.trim();
-  if(!content){ toast('민원 내용을 입력해 주세요', 'images/pungi_singing.jpg'); $('cmpContent').focus(); return; }
-  const c = {
-    no: ++complaintSeq, time: new Date(),
-    name: $('cmpName').value.trim(), content,
-    phone: $('cmpPhone').value.trim(), addr: $('cmpAddr').value.trim(), note: $('cmpNote').value.trim(),
-    lat: basePos.getLat(), lng: basePos.getLng(), marker: null
-  };
-  lastReceiver = c.name;
-  complaints.push(c);
-  closeComplaintModal();
-  toast(`민원 #${c.no} 등록 완료`);
-  const btn = document.querySelector('.tg[data-k=complaint]');
-  if(!btn.classList.contains('on')) toggleLayer(btn);     // 레이어가 꺼져 있으면 켜서 바로 보여 줌
-  else { addComplaintMarker(c); renderComplaintList(); }
-}
-
-function addComplaintMarker(c){
-  c.marker = new kakao.maps.Marker({position: LL(c.lat, c.lng), title: `민원 #${c.no}`,
-    image: pin(CMP_COLOR, c.no < 100 ? String(c.no) : '+')});   // 핀 안에 순번 표시
-  c.marker.setMap(map);
-  kakao.maps.event.addListener(c.marker, 'click', () => showComplaint(c));
-}
-function showComplaint(c){                          // 거점과 같은 정보 창을 재사용
-  const title = c.content.length > 24 ? c.content.slice(0, 24) + '…' : c.content;
-  openPoiCard(c.marker, {name: `#${c.no} ${title}`, addr: c.addr, lat: c.lat, lng: c.lng});
-}
-
-function renderComplaintList(){
-  $('cmpCount').textContent = complaints.length;
+function renderPocList(){
+  const items = layers.poc ? layers.poc.items : [];
+  $('cmpCount').textContent = items.length;
   const ul = $('cmpList'); ul.innerHTML = '';
-  if(!complaints.length){ ul.innerHTML = '<li class="cmp-empty">등록된 민원이 없어요</li>'; return; }
-  [...complaints].reverse().forEach(c => {          // 최근 등록이 위로
+  if(!items.length){ ul.innerHTML = '<li class="cmp-empty">등록된 지점이 없어요</li>'; return; }
+  items.forEach((m, i) => {
+    const it = m.item;
     const li = document.createElement('li');
     const row = (cls, text) => { const d = document.createElement('div'); d.className = cls; d.textContent = text; li.appendChild(d); };
-    row('cmp-head', `#${c.no}  ${fmtTime(c.time)}`);
-    row('cmp-content', c.content);
-    row('cmp-meta', `접수자 ${c.name || '-'} · 연락처 ${c.phone || '-'}`);
-    row('cmp-addr', c.addr || '주소 정보 없음');
-    if(c.note) row('cmp-note', `비고: ${c.note}`);
-    li.addEventListener('click', () => { map.panTo(LL(c.lat, c.lng)); showComplaint(c); });
+    row('cmp-head', `#${i + 1}`);
+    row('cmp-content', it.title || it.name || '(제목 없음)');
+    row('cmp-addr', it.road || it.jibun || it.addr || '');
+    if(it.content) row('cmp-meta', it.content);
+    li.addEventListener('click', () => { map.panTo(m.getPosition()); openPoiCard(m, it); });
     ul.appendChild(li);
   });
 }
-function setComplaintLayer(on){                     // 민원정보 레이어 켜기/끄기
-  if(on){
-    complaints.forEach(c => { if(c.marker) c.marker.setMap(map); else addComplaintMarker(c); });
-    renderComplaintList();
-    $('cmpPanel').classList.add('show');
-  } else {
-    complaints.forEach(c => { if(c.marker) c.marker.setMap(null); });
-    $('cmpPanel').classList.remove('show');
-    if(poiOpenFor && complaints.some(c => c.marker === poiOpenFor)) closePoiCard();
-  }
-}
-
-$('cmpBtn').addEventListener('click', openComplaintModal);
-$('cmpCancel').addEventListener('click', closeComplaintModal);
-$('cmpSave').addEventListener('click', saveComplaint);
 $('cmpFold').addEventListener('click', () => {
   const folded = $('cmpPanel').classList.toggle('folded');
   $('cmpFold').textContent = folded ? '펴기 ▾' : '접기 ▴';
 });
-/* ---- 연락처 입력 마스크: 숫자만 입력하면 하이픈을 자동으로 넣음 ---- */
-function formatPhone(raw){
-  let d = raw.replace(/^\+82\s*-?\s*0?/, '0').replace(/\D/g, '');
-  if(/^1[5-9]/.test(d)) return d.slice(0, 8).replace(/^(\d{4})(\d{1,4})$/, '$1-$2');   // 1588-1234 같은 대표번호
-  d = d.slice(0, d.startsWith('02') ? 10 : 11);
-  const p = d.startsWith('02') ? 2 : 3;
-  if(d.length <= p) return d;
-  const rest = d.slice(p);
-  const midLen = d.startsWith('010') ? 4 : (d.length >= p + 8 ? 4 : 3);
-  const mid = rest.slice(0, midLen), tail = rest.slice(midLen);
-  return tail ? `${d.slice(0, p)}-${mid}-${tail}` : `${d.slice(0, p)}-${mid}`;
-}
-$('cmpPhone').addEventListener('input', e => { e.target.value = formatPhone(e.target.value); });
 
+/* ---- 목록 창 투명도(창 전체) ---- */
+$('cmpAlpha').addEventListener('input', e => { $('cmpPanel').style.opacity = e.target.value / 100; });
+
+/* ---- 목록 창 이동: 제목 줄을 잡고 끌기 (PC), 제목 줄을 더블클릭하면 원래 위치로 ---- */
+(function(){
+  const panel = $('cmpPanel'), handle = panel.querySelector('.cmp-top');
+  const resetPos = () => ['left', 'top', 'right', 'bottom'].forEach(p => panel.style[p] = '');
+  let dx = 0, dy = 0, dragging = false;
+  handle.addEventListener('pointerdown', e => {
+    if(isMobile() || e.target.closest('button')) return;         // 모바일, 접기 버튼 클릭은 제외
+    const pane = panel.offsetParent.getBoundingClientRect(), r = panel.getBoundingClientRect();
+    panel.style.left = (r.left - pane.left) + 'px';               // 오른쪽 기준 → 왼쪽·위 기준으로 전환
+    panel.style.top = (r.top - pane.top) + 'px';
+    panel.style.right = 'auto'; panel.style.bottom = 'auto';
+    dx = e.clientX - r.left; dy = e.clientY - r.top;
+    dragging = true;
+    handle.setPointerCapture(e.pointerId);                        // 창 밖으로 나가도 계속 따라옴
+    e.preventDefault();
+  });
+  handle.addEventListener('pointermove', e => {
+    if(!dragging) return;
+    const pane = panel.offsetParent.getBoundingClientRect();
+    const x = e.clientX - pane.left - dx, y = e.clientY - pane.top - dy;
+    panel.style.left = Math.max(0, Math.min(x, pane.width - panel.offsetWidth)) + 'px';    // 지도 칸 밖으로 못 나감
+    panel.style.top = Math.max(0, Math.min(y, pane.height - panel.offsetHeight)) + 'px';
+  });
+  const end = () => { dragging = false; };
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+  handle.addEventListener('dblclick', e => { if(!e.target.closest('button')) resetPos(); });
+  window.matchMedia('(max-width:768px)').addEventListener('change', e => { if(e.matches) resetPos(); });   // 모바일 폭이 되면 위치 초기화
+})();
 
 function pin(color, glyph){
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="46" viewBox="0 0 36 46"><path d="M18 45C18 45 3 28 3 17a15 15 0 0 1 30 0c0 11-15 28-15 28z" fill="${color}" stroke="#fff" stroke-width="2.5"/><circle cx="18" cy="17" r="9.5" fill="#fff"/><text x="18" y="22" font-size="13" font-weight="700" text-anchor="middle" fill="#4a3a3d">${glyph}</text></svg>`;
   return new kakao.maps.MarkerImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
     new kakao.maps.Size(36, 46), {offset: new kakao.maps.Point(18, 46)});
 }
-function buildPoi(k){
-  const cfg = POI[k];
-  return cfg.list.map(it => {
-    const image = it.icon ? new kakao.maps.MarkerImage(it.icon, new kakao.maps.Size(40, 40)) : pin(cfg.color, it.glyph);
-    const m = new kakao.maps.Marker({position: LL(it.lat, it.lng), image, title: it.name});
+/* ---- JSON 파일 불러오기 (같은 파일은 한 번만 읽음) ---- */
+const jsonCache = {};
+function loadJson(url){
+  if(!jsonCache[url]){
+    jsonCache[url] = fetch(url, {cache: 'no-cache'})              // 파일을 고치면 새로고침으로 바로 반영
+      .then(res => { if(!res.ok) throw new Error(`${url} ${res.status}`); return res.json(); })
+      .catch(err => { delete jsonCache[url]; throw err; });         // 실패하면 다음에 다시 시도
+  }
+  return jsonCache[url];
+}
+function buildPoi(cfg){
+  const markers = [];
+  (cfg.list || []).forEach((it, i) => {
+    if(typeof it.lat !== 'number' || typeof it.lng !== 'number'){ console.warn('좌표 오류로 건너뜀:', it.title || it.name || i); return; }
+    const image = it.icon ? new kakao.maps.MarkerImage(it.icon, new kakao.maps.Size(40, 40))
+                          : pin(cfg.color || '#888888', it.glyph || cfg.glyph || '●');
+    const m = new kakao.maps.Marker({position: LL(it.lat, it.lng), image, title: it.title || it.name});
+    m.item = it;                                                    // 목록 창에서 마커와 데이터를 연결하기 위해 보관
     kakao.maps.event.addListener(m, 'click', () => openPoiCard(m, it));
-  return m;
+    markers.push(m);
   });
+  return markers;
 }
 async function toggleLayer(btn){
   const k = btn.dataset.k;
   const turnOn = !btn.classList.contains('on');
   btn.classList.toggle('on', turnOn);
-  if(k === 'complaint'){ setComplaintLayer(turnOn); return; }
+  const isOn = () => btn.classList.contains('on');                  // 불러오는 사이 버튼을 다시 눌렀을 수 있으므로 현재 상태로 판단
   try{
+    if(k === 'poc'){ await setPocLayer(turnOn); return; }
     if(BOUNDARY[k]){
       if(!layers[k]) layers[k] = await buildBoundary(BOUNDARY[k].url, BOUNDARY[k]);
-      layers[k].items.forEach(o => o.setMap(turnOn ? map : null));
-      layers[k].labels.forEach(o => o.setMap(turnOn ? map : null));
+      layers[k].items.forEach(o => o.setMap(isOn() ? map : null));
+      layers[k].labels.forEach(o => o.setMap(isOn() ? map : null));
     } else {
-      if(!layers[k]) layers[k] = {items: buildPoi(k), labels: []};
-      layers[k].items.forEach(o => o.setMap(turnOn ? map : null));
-      if(!turnOn && layers[k].items.includes(poiOpenFor)) closePoiCard();
+      if(!layers[k]){
+        const data = await loadJson(POI_URL);
+        if(!data[k]) throw new Error(`poi.json에 "${k}" 항목이 없습니다`);
+        if(!layers[k]) layers[k] = {items: buildPoi(data[k]), labels: []};
+      }
+      layers[k].items.forEach(o => o.setMap(isOn() ? map : null));
+      if(!isOn() && layers[k].items.includes(poiOpenFor)) closePoiCard();
     }
   } catch(err){
     btn.classList.remove('on');
-    toast(BOUNDARY[k] ? '경계 파일을 불러오지 못했어요 (웹서버로 실행 중인지, 파일 경로를 확인해 주세요)' : '레이어 오류', 'images/pungi_singing.jpg');
+    toast(BOUNDARY[k] ? '경계 파일을 불러오지 못했어요 (웹서버로 실행 중인지, 파일 경로를 확인해 주세요)'
+        : k === 'poc' ? '민원 다발 지역 데이터(data/poc.json)를 불러오지 못했어요'
+        : '거점 데이터(data/poi.json)를 불러오지 못했어요', 'images/pungi_singing.jpg');
     console.error(err);
   }
 }
 document.querySelectorAll('.tg').forEach(b => b.addEventListener('click', () => toggleLayer(b)));
-
-window.addEventListener('beforeunload', e => {
-  if(complaints.length){ e.preventDefault(); e.returnValue = ''; }
-});
 </script>
 </body>
 </html>
