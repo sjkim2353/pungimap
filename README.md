@@ -10,7 +10,7 @@
 
 코드 작성에는 오픈소스로 공개되어 있는 행정동 경계 자료와 KAKAO Maps API 유틸을 사용했습니다.
 
-- 행정동 경계 자료: HangJeongDong_ver20261001.geojson Seungbum KIM. (2026). admdongkor. GitHub. https://github.com/vuski/admdongkor/tree/master.
+- 행정동 경계 자료(HangJeongDong_ver20261001.geojson): Seungbum KIM. (2026). admdongkor. GitHub. https://github.com/vuski/admdongkor/tree/master.
 - 카카오 지도 API: Kakao Developers. https://developers.kakao.com.
 
 <br>
