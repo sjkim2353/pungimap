@@ -1,5 +1,7 @@
 # **PungiMap**
 
+접속 링크: https://sjkim2353.github.io/pungimap/
+
 <br>
 
 ## 풍이맵 안내
