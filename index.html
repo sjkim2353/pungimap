@@ -197,11 +197,9 @@ cursor:move;user-select:none;touch-action:none}
   .cmp-panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:46%}   /* 모바일은 아래쪽 창 */
   .modal-box input,.modal-box textarea{font-size:16px}                           /* 아이폰 입력 시 확대 방지 */
   /* 레이어 버튼 순서(모바일 전용): 숫자가 작을수록 왼쪽 */
-  .tg[data-k=dong]{order:1}
-  .tg[data-k=poc]{order:2}
-  .tg[data-k=hub]{order:3}
-  .tg[data-k=office]{order:4}
-  .tg[data-k=bank]{order:5}
+  .tg[data-k=poc]{order:1}
+  .tg[data-k=hub]{order:2}
+  .tg[data-k=dong]{order:3}
   .cmp-top{cursor:default}
 }
 </style>
@@ -245,11 +243,9 @@ cursor:move;user-select:none;touch-action:none}
     <div class="layers">
       <h2>지도 레이어</h2>
       <div class="grid">
-	    <button class="tg" data-k="hub">주변 복지관</button>
+		<button class="tg" data-k="poc">민원 다발 지역</button>
+	    <button class="tg" data-k="hub">관내 경로당</button>
         <button class="tg" data-k="dong">행정구역 경계</button>
-        <button class="tg" data-k="office">주변 관공서</button>
-        <button class="tg" data-k="poc">민원 다발 지역</button>
-        <button class="tg" data-k="bank">주변 은행</button>
       </div>
     </div>
   </aside>
