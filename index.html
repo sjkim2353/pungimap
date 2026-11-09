@@ -308,14 +308,17 @@ if(typeof kakao === 'undefined' || !kakao.maps){
 }
 const LL = (lat, lng) => new kakao.maps.LatLng(lat, lng);
 
-/* ---- 토스트 ---- */
-let toastTimer;
+/* ---- 토스트: 항상 같은 시간 동안 보이게 설정 ---- */
+const TOAST_MS = 2500; // 메세지가 보이는 시간(ms).
+['images/pungi_hi.jpg', 'images/pungi_singing.jpg'].forEach(src => { new Image().src = src; });   // 미리 불러와 빈 동그라미 방지
+let toastTimer = null;
 function toast(msg, img='images/pungi_hi.jpg'){
-  $('toast').querySelector('img').src = img;
-  $('toastMsg').textContent = msg;
-  $('toast').classList.add('show');
+  const box = $('toast'), icon = box.querySelector('img');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => $('toast').classList.remove('show'), 2200);
+  if(!icon.src.endsWith(img)) icon.src = img; // 같은 이미지면 다시 지정하지 않음
+  $('toastMsg').textContent = msg;
+  box.classList.add('show');
+  toastTimer = setTimeout(() => box.classList.remove('show'), TOAST_MS);
 }
 
 /* ---- 지도 ---- */
