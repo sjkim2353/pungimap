@@ -610,7 +610,7 @@ function updateDongByPos(latlng){
 }
 
 const BOUNDARY = {
-  dong: {url: DONG_URL, color: '#d85e65', label: p => (p.adm_nm || '').split(' ').pop(), highlight: n => n === currentDong}
+  dong: {url: DONG_URL, color: '#d85e65', label: p => (p.ADM_NM || p.adm_nm || '').trim().split(' ').pop(), highlight: n => n === currentDong} // 새로운 json 파일의 라벨을 읽을 수 있도록 수정
 };
 /* ---- 거점 정보 오버레이 (한 번에 하나만 열림) ---- */
 let poiOverlay = null, poiOpenFor = null;
