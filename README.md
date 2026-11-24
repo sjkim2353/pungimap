@@ -22,6 +22,7 @@
 ### data
 
 - suncheon_dong.geojson: HangJeongDong_ver20261001.geojson 파일에서 순천시 읍·면·동 경계 정보만을 추출한 자료
+- suncheon_gis.geojson: 공공데이터 포털에서 획득한 BND_ADM_DONG_PG.shp 파일(국토교통부 제공)에서 순천시 정보만 추출한 자료
 - poi.json: 주요 관심 지역(Point of Interests) 정보
 - poc.json: 민원 다발 지역(Point of Complaints) 정보
 
